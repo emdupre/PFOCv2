@@ -24,7 +24,7 @@ library(R.matlab)
 
 # Determine result format for pulling data.
 if (grepl("_BfMRIresult.mat",resultMat)) {
-    ## Read in your dset from a result.mat.
+    ## Read in your dset from a block PLS result.mat.
     dmat<-readMat(resultMat)
     Estimate<-as.data.frame(dmat$result[,,1]$boot.result[,,1]$orig.usc)
     colnames(Estimate)<-paste("Estimate_LV",1:ncol(Estimate),sep="")
@@ -44,7 +44,7 @@ if (grepl("_BfMRIresult.mat",resultMat)) {
     Group <- as.factor(c(rep(groupLevels[1],numRepeat),rep(groupLevels[2],numRepeat)))
     
 } else if (grepl("_fMRIresult.mat",resultMat)) {
-    ## Read in your dset from a result.mat.
+    ## Read in your dset from a event-related PLS result.mat.
     dmat<-readMat(resultMat)
     Estimate<-as.data.frame(dmat$boot.result[,,1]$orig.usc)
     colnames(Estimate)<-paste("Estimate_LV",1:ncol(Estimate),sep="")
@@ -76,8 +76,7 @@ PFOC<-data.frame(Estimate,LL,UL,Condition,Group)
 PFOC$Condition <- factor(PFOC$Condition,levels = condLevels)
 PFOC$Group <- factor(PFOC$Group,levels = groupLevels)
 
-# Create data structure significant LVs.
-
+# Create data structure for significant LVs.
 estimates<-c()
 lbs<-c()
 ubs<-c()
