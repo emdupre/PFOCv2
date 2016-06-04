@@ -1,3 +1,8 @@
+# A script to extract and plot significant LVs from PLS
+# event-related and block result.mat files in all current 
+# MATLAB encodings. Not yet compatible with behavioral PLS
+# results !
+
 # Note: If this is your first time running R from within 
 # python, you'll need to execute the following commands:
 # !conda install -c r rpy2
@@ -20,9 +25,17 @@ from rpy2.robjects.packages import importr
 ### Setting default parameters:
 alpha = 0.05
 GroupLevels = ['Young','Old']
+### If you do not have a preferred condition display
+### order, set CondLevels = None
+CondLevels = ['Past','Future','Other','Control']
 ###############################
 
 def set_group_lvls(nRepeat,GroupLevels,nGroup):
+    """
+    A function to determine the number of groups in 
+    a PLS result.mat. Will name groups according to 
+    user-supplied "GroupLevels."
+    """
     Group = []
     for i in range(0,nGroup):
         Group.extend([GroupLevels[i]]*nRepeat)
@@ -31,6 +44,11 @@ def set_group_lvls(nRepeat,GroupLevels,nGroup):
 
 
 def event_related(data_array):
+    """
+    A function to extract significant latent variable attributes
+    (Estimates, associated CIs, and significance levels) from 
+    event-related PLS results. 
+    """
     Estimate = np.array(data_array.get('boot_result')['orig_usc'])
     UL = np.array(data_array.get('boot_result')['ulusc'])
     LL = np.array(data_array.get('boot_result')['llusc'])
@@ -39,6 +57,19 @@ def event_related(data_array):
 
 
 def extract_hdf5(data_array,ftype):
+    """
+    A function to extract significant latent variables with their
+    associated confidence intervals for PLS results with MATLAB 
+    encoding -v7.3 (HDF5 type encoding). 
+
+    Fun fact: Matlab is really abusing the HDF5 format here. Each
+    condition name is a collection of integers, referring to ASCII 
+    characters. The for loop for Condition.append reconstructs the 
+    condition name from these integers. 
+
+    Thanks to Andrew Collette for insight on this on the h5py 
+    Google group!
+    """
     if ftype == 'block':
         Estimate = np.array(data_array.get('result')['boot_result']['orig_usc'])
         UL = np.array(data_array.get('result')['boot_result']['ulusc'])
@@ -78,6 +109,11 @@ def extract_hdf5(data_array,ftype):
 
 
 def extract_unicode(data_array,ftype):
+    """
+    A function to extract significant latent variables with their
+    associated confidence intervals for PLS results with MATLAB 
+    encoding -v7 or earlier. 
+    """
     if ftype == 'block':
         Estimate = data_array.get('result')['boot_result'][0,0]['orig_usc']
         UL = data_array.get('result')['boot_result'][0,0]['ulusc']
@@ -115,13 +151,21 @@ def extract_unicode(data_array,ftype):
     return df
 
 
-def plot_w_ggplot2(f,df):
+def plot_w_ggplot2(f,df,CondLevels):
+    """
+    A function to create bar graphs for each of your significant
+    latent variables in a given file. Can also be supplied with factor
+    levels for preferred condition display. Make sure you have 
+    necessary packages installed in rpy2! See note at beginning of
+    script for more information. 
+    """
     plot_func = robj.r("""
         library(ggplot2)
         library(wesanderson)
 
-        function(fname,pandasDF){
+        function(fname,pandasDF,condLvls){
 
+            pandasDF$Condition <- factor(pandasDF$Condition,levels = condLvls)
             nsigLVs = (ncol(pandasDF)-2)/3
             if (nlevels(pandasDF$Group)==1){
               for(i in 1:nsigLVs){
@@ -161,7 +205,8 @@ def plot_w_ggplot2(f,df):
         """)
     robj.pandas2ri.activate()
     df_R = robj.conversion.py2ri(df)
-    plot_func(f,df_R)
+    CondLevels_R = robj.conversion.py2ri(CondLevels)
+    plot_func(f,df_R,CondLevels_R)
 
 
 if __name__ == '__main__':
@@ -179,4 +224,4 @@ if __name__ == '__main__':
             data_array = h5py.File(f,'r')
             df = extract_hdf5(data_array,ftype)
 
-        plot_w_ggplot2(f,df)
+        plot_w_ggplot2(f,df,CondLevels)
