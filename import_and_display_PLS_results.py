@@ -22,7 +22,7 @@ alpha = 0.05
 GroupLevels = ['Young','Old']
 ###############################
 
-def set_group_lvls(nRepeat,GroupLevels):
+def set_group_lvls(nRepeat,GroupLevels,nGroup):
     Group = []
     for i in range(0,nGroup):
         Group.extend([GroupLevels[i]]*nRepeat)
@@ -39,15 +39,15 @@ def event_related(data_array):
 
 
 def extract_hdf5(data_array,ftype):
-    if ftype = block:
+    if ftype == 'block':
         Estimate = np.array(data_array.get('result')['boot_result']['orig_usc'])
         UL = np.array(data_array.get('result')['boot_result']['ulusc'])
         LL = np.array(data_array.get('result')['boot_result']['llusc'])
         Significance = np.array(data_array.get('result')['perm_result']['sprob'])
         nGroup = np.array(data_array.get('result')['num_subj_lst']).shape[1]
         nRepeat = Estimate.shape[1]/nGroup
-    elif ftype = event:
-        event_related(data_array)
+    elif ftype == 'event':
+        Estimate, UL, LL, Significance = event_related(data_array)
         nGroup = np.array(data_array.get('subj_group')).shape[1]
         nRepeat = Estimate.shape[1]/nGroup
 
@@ -57,7 +57,7 @@ def extract_hdf5(data_array,ftype):
     sigUL=UL[sigLV].T
     sigLL=LL[sigLV].T
 
-    set_group_lvls(nRepeat)
+    Group = set_group_lvls(nRepeat,GroupLevels,nGroup)
     cond_array = data_array['cond_name']
     Condition = []
     for i in range(0, cond_array.shape[0]):
@@ -78,25 +78,25 @@ def extract_hdf5(data_array,ftype):
 
 
 def extract_unicode(data_array,ftype):
-    if ftype = block:
+    if ftype == 'block':
         Estimate = data_array.get('result')['boot_result'][0,0]['orig_usc']
         UL = data_array.get('result')['boot_result'][0,0]['ulusc']
         LL = data_array.get('result')['boot_result'][0,0]['llusc']
         Significance = data_array.get('result')['perm_result'][0,0]['sprob']
-        nGroup = data_array.get('result')['num_subj_lst'].shape[1]
-        nRepeat = Estimate.shape[1]/nGroup
-    elif ftype = event:
-        event_related(data_array)
+        nGroup = data_array.get('result')['num_subj_lst'][0,0].shape[1]
+        nRepeat = Estimate[0,0].shape[1]/nGroup
+    elif ftype == 'event':
+        Estimate, UL, LL, Significance = event_related(data_array)
         nGroup = data_array.get('subj_group').shape[1]
         nRepeat = Estimate[0,0].shape[1]/nGroup
 
     mask=Significance[0,0]<alpha
     sigLV = np.where(mask)[0]
-    sigEstimate=Estimate[0,0][sigLV].T
-    sigUL=UL[0,0][sigLV].T
-    sigLL=LL[0,0][sigLV].T
+    sigEstimate=pd.DataFrame(Estimate[0,0])[sigLV]
+    sigUL=pd.DataFrame(UL[0,0])[sigLV]
+    sigLL=pd.DataFrame(LL[0,0])[sigLV]
 
-    set_group_lvls(nRepeat)
+    Group = set_group_lvls(nRepeat,GroupLevels,nGroup)
     cond_array = data_array['cond_name']
     Condition = []
     for i in range(0, cond_array.shape[1]):
@@ -108,27 +108,29 @@ def extract_unicode(data_array,ftype):
     ['UL_LV'+str(i) for i in sigLV+1] + 
     ['LL_LV'+str(i) for i in sigLV+1])
 
-    df = pd.DataFrame(np.hstack((sigEstimate,sigUL,sigLL)))
+    df = pd.concat([sigEstimate,sigUL,sigLL],axis=1)
     df.columns = colnames
     df = pd.concat([df,Condition,Group],axis = 1)
 
     return df
 
-def plot_w_ggplot2(df):
+
+def plot_w_ggplot2(f,df):
     plot_func = robj.r("""
         library(ggplot2)
         library(wesanderson)
 
-        function(pandasDF){
+        function(fname,pandasDF){
 
+            nsigLVs = (ncol(pandasDF)-2)/3
             if (nlevels(pandasDF$Group)==1){
-              for(i in 1:((ncol(pandasDF)-2)/3)){
-                ggsave(filename=paste(pandasDF[i],".png"),
+              for(i in 1:nsigLVs){
+                ggsave(filename=paste(file_path_sans_ext(fname),colnames(pandasDF[i]),".png",sep=""),
                         plot=ggplot(pandasDF, aes(x=Condition, y=pandasDF[i])) +
                         geom_bar(width=.75,position=position_dodge(), stat="identity",
                                  size=.2, fill="#899DA4") +
-                        geom_errorbar(aes(ymin=pandasDF[i+6],
-                                          ymax=pandasDF[i+3]),
+                        geom_errorbar(aes(ymin=pandasDF[i+(2*nsigLVs)],
+                                          ymax=pandasDF[i+nsigLVs]),
                                       width=.1,
                                       position=position_dodge(.75),
                                       colour="black") +
@@ -138,13 +140,13 @@ def plot_w_ggplot2(df):
                         theme(axis.title.x = element_text(margin = margin(t= 22))))
                 }
             } else if (nlevels(pandasDF$Group)>1){
-                for(i in 1:((ncol(pandasDF)-2)/3)){
-                    ggsave(filename=paste(pandasDF[i],".png"),
+                for(i in 1:nsigLVs){
+                    ggsave(filename=paste(file_path_sans_ext(fname),colnames(pandasDF[i]),".png",sep=""),
                             plot=ggplot(pandasDF, aes(x=Condition, y=pandasDF[i], fill=Group)) +
                             geom_bar(width=.75,position=position_dodge(), stat="identity",
                                      size=.2) +
-                            geom_errorbar(aes(ymin=pandasDF[i+6],
-                                              ymax=pandasDF[i+3]),
+                            geom_errorbar(aes(ymin=pandasDF[i+(2*nsigLVs)],
+                                              ymax=pandasDF[i+nsigLVs]),
                                           width=.1,
                                           position=position_dodge(.75),
                                           colour="black") +
@@ -157,11 +159,10 @@ def plot_w_ggplot2(df):
             }
         }
         """)
-    #gr = importr('grDevices')
     robj.pandas2ri.activate()
     df_R = robj.conversion.py2ri(df)
-    plot_func(df_R)
-    #gr.dev_off()
+    plot_func(f,df_R)
+
 
 if __name__ == '__main__':
     files = glob.glob('*result.mat')
@@ -178,4 +179,4 @@ if __name__ == '__main__':
             data_array = h5py.File(f,'r')
             df = extract_hdf5(data_array,ftype)
 
-        # plot_it_in_R(output)
+        plot_w_ggplot2(f,df)
