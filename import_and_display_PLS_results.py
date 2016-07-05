@@ -1,6 +1,6 @@
 # A script to extract and plot significant LVs from PLS
 # event-related and block result.mat files in all current 
-# MATLAB encodings. Not yet compatible with behavioral PLS
+# MATLAB encodings. Not yet compatible with structural PLS
 # results !
 
 # Note: If this is your first time running R from within 
@@ -162,6 +162,7 @@ def plot_w_ggplot2(f,df,CondLevels):
     plot_func = robj.r("""
         library(ggplot2)
         library(wesanderson)
+        library(tools)
 
         function(fname,pandasDF,condLvls){
 
