@@ -27,7 +27,7 @@ alpha = 0.05
 GroupLevels = ['Young','Old']
 ### If you do not have a preferred condition display
 ### order, set CondLevels = None
-CondLevels = ['Past','Future','Other','Control']
+CondLevels = ['Past','Future','Other','Null','Control']
 ###############################
 
 def set_group_lvls(nRepeat,GroupLevels,nGroup):
@@ -49,10 +49,16 @@ def event_related(data_array):
     (Estimates, associated CIs, and significance levels) from 
     event-related PLS results. 
     """
-    Estimate = np.array(data_array.get('boot_result')['orig_usc'])
-    UL = np.array(data_array.get('boot_result')['ulusc'])
-    LL = np.array(data_array.get('boot_result')['llusc'])
-    Significance = np.array(data_array.get('perm_result')['s_prob'])
+    try:
+        Estimate = np.array(data_array.get('boot_result')['orig_usc'])
+        UL = np.array(data_array.get('boot_result')['ulusc'])
+        LL = np.array(data_array.get('boot_result')['llusc'])
+        Significance = np.array(data_array.get('perm_result')['s_prob'])
+    except KeyError:
+        Estimate = np.array(data_array.get('boot_result')['orig_corr'])
+        UL = np.array(data_array.get('boot_result')['ulcorr'])
+        LL = np.array(data_array.get('boot_result')['llcorr'])
+        Significance = np.array(data_array.get('perm_result')['sprob'])
     return Estimate, UL, LL, Significance
 
 
@@ -79,7 +85,7 @@ def extract_hdf5(data_array,ftype):
         nRepeat = Estimate.shape[1]/nGroup
     elif ftype == 'event':
         Estimate, UL, LL, Significance = event_related(data_array)
-        nGroup = np.array(data_array.get('subj_group')).shape[1]
+        nGroup = np.array(data_array.get('subj_group')).shape[0]
         nRepeat = Estimate.shape[1]/nGroup
 
     mask=Significance[0]<alpha
@@ -151,7 +157,7 @@ def extract_unicode(data_array,ftype):
     return df
 
 
-def plot_w_ggplot2(f,df,CondLevels):
+def plot_w_ggplot2(f,df,CondLevels,GroupLevels):
     """
     A function to create bar graphs for each of your significant
     latent variables in a given file. Can also be supplied with factor
@@ -164,9 +170,10 @@ def plot_w_ggplot2(f,df,CondLevels):
         library(wesanderson)
         library(tools)
 
-        function(fname,pandasDF,condLvls){
+        function(fname,pandasDF,condLvls,grpLvls){
 
             pandasDF$Condition <- factor(pandasDF$Condition,levels = condLvls)
+            pandasDF$Group <- factor(pandasDF$Group,levels = grpLvls)
             nsigLVs = (ncol(pandasDF)-2)/3
             if (nlevels(pandasDF$Group)==1){
               for(i in 1:nsigLVs){
@@ -207,7 +214,8 @@ def plot_w_ggplot2(f,df,CondLevels):
     robj.pandas2ri.activate()
     df_R = robj.conversion.py2ri(df)
     CondLevels_R = robj.conversion.py2ri(CondLevels)
-    plot_func(f,df_R,CondLevels_R)
+    GroupLevels_R = robj.conversion.py2ri(GroupLevels)
+    plot_func(f,df_R,CondLevels_R,GroupLevels_R)
 
 
 if __name__ == '__main__':
@@ -225,4 +233,4 @@ if __name__ == '__main__':
             data_array = h5py.File(f,'r')
             df = extract_hdf5(data_array,ftype)
 
-        plot_w_ggplot2(f,df,CondLevels)
+        plot_w_ggplot2(f,df,CondLevels,GroupLevels)
