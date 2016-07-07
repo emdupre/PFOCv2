@@ -3,9 +3,11 @@ import glob
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 if __name__ == '__main__':
     files = glob.glob('PFOC_3dQwarpYO_LV*bs_plot.mat')
+    sns.set_style("white")
 
     for f in files:
         fname = os.path.splitext(f)[0]
@@ -33,7 +35,7 @@ if __name__ == '__main__':
         plt.plot(bsmean.T[2], color="green",  linewidth=2, linestyle="-", marker="D", label="Past")
         plt.plot(bsmean.T[3], color="red",  linewidth=2, linestyle="-", marker="D", label="Future")
         plt.plot(bsmean.T[4], color="blue",  linewidth=2, linestyle="-", marker="D", label="Other")
-        plt.plot(bsmean.T[0], color="black", linewidth=2, linestyle="-", marker="D", label="Control")
+        plt.plot(bsmean.T[0], color="black",  linewidth=2, linestyle="-", marker="D", label="Control")
         plt.plot(bsmean.T[1], color="orange",  linewidth=2, linestyle="-", marker="D", label="Null")
-        lgd = plt.legend(loc='center right',numpoints=1,handleheight=2,frameon=False,bbox_to_anchor=(1.3,0.5))
+        lgd = plt.legend(loc='center right',numpoints=1,fontsize=16,handleheight=2,frameon=False,bbox_to_anchor=(1.3,0.5))
         plt.savefig(fname+'.png',bbox_extra_artists=(lgd,),bbox_inches='tight')
