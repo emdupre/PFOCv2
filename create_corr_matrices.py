@@ -42,23 +42,24 @@ def fill_corr_matrices(files):
             zcorr[subj,:,:,cond] = np.arctanh(corr[subj,:,:,cond].round(3)) # pull each condition and r-to-z transform
         subj += 1
 
-    avgcorr = np.tanh(zcorr.mean(axis = 0)) # average and convert back with z-to-r transform
-    # avgcorr = zcorr.mean(axis = 0) # average but keep z-transformed for comparing groups
-    return avgcorr
+    avgzcorr = zcorr.mean(axis = 0) # average but keep z-transformed in case comparing groups
+    return avgzcorr
 
 
-def plot_corr_matrices(avgcorr,group):
-    # Average matrices and project correlation matrices for each condition 
-    # transcorr = np.tanh(avgcorr)
+def plot_corr_matrices(avgzcorr,group):
+    # Convert matrices back to r-values and project
+    avgrcorr = np.tanh(avgzcorr) # transform to r-values for interpretation
     condNames = ['Control', 'Null', 'Past', 'Future', 'Other']
     for cond in range(5):
         sns.set(style = "white") # set seaborn style
         f, ax = plt.subplots(figsize = (11, 9)) # generate empty figure
-        sns.heatmap(avgcorr[:,:,cond], cmap = "RdBu_r", center = 0, square = True,
+        sns.heatmap(avgrcorr[:,:,cond], cmap = "RdBu_r", center = 0, square = True,
                     xticklabels=['PFCdp','IPL','STS','MPFC','pHG','PCC','FEF', 'IPS', 'SPL7a', 'MT+', 'SPL7p','PrCv'],
                     yticklabels=['PFCdp','IPL','STS','MPFC','pHG','PCC','FEF', 'IPS', 'SPL7a', 'MT+', 'SPL7p','PrCv'])
-        plt.axvline(6, color='k', lw = 1.5)
-        plt.axhline(6, color='k', lw = 1.5)
+        # DN region labels: ['PFCdp','IPL','STS','MPFC','pHG','PCC']
+        # DAN region labels: ['FEF', 'IPS', 'SPL7a', 'MT+', 'SPL7p','PrCv']
+        plt.axvline(6, color='k', lw = 1.5) # vertical line to delineate DN and DAN
+        plt.axhline(6, color='k', lw = 1.5) # hortizontal line to delineate DN and DAN
         plt.savefig("%s_%s_corrMatrix.png" % (group, condNames[cond]))
 
 
@@ -71,15 +72,13 @@ if __name__ == '__main__':
     # Calculate corr matrices
     YoungAvgCorr = fill_corr_matrices(Youngfiles)
     OldAvgCorr = fill_corr_matrices(Olderfiles)
-    #DiffAvgCorr = YoungAvgCorr - OldAvgCorr
+    DiffAvgCorr = YoungAvgCorr - OldAvgCorr
 
     # Plot all matrices
-    plot_corr_matrices(YoungAvgCorr, 'Young')
-    plot_corr_matrices(OldAvgCorr, 'Older')
-    #plot_corr_matrices(DiffAvgCorr, 'Diff')
+    plot_corr_matrices(YoungAvgzCorr, 'Young')
+    plot_corr_matrices(OldAvgzCorr, 'Older')
+    plot_corr_matrices(DiffAvgzCorr, 'Diff')
 
 
-# DN region labels: ['PFCdp','IPL','STS','MPFC','pHG','PCC']
-# DAN region labels: ['FEF', 'IPS', 'SPL7a', 'MT+', 'SPL7p','PrCv']
 
 
